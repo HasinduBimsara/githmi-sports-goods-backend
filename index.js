@@ -1,32 +1,24 @@
-import express from "express";
-import bodyParser from "body-parser";
-import mongoose from "mongoose";
-import userRouter from "./routes/userRouter.js";
-import productRouter from "./routes/productRouter.js";
-import verifyJWT from "./middleware/auth.js";
-import orderRouter from "./routes/orderRouter.js";
-import dotenv from "dotenv";
-import cors from "cors";
-dotenv.config();
+const express = require("express");
+const mongoose = require("mongoose");
+const cors = require("cors");
+require("dotenv").config();
+
 const app = express();
+
+// Middleware
+app.use(express.json());
 app.use(cors());
 
+// Routes
+app.use("/api/users", require("./routes/userRouter"));
+app.use("/api/products", require("./routes/productRouter"));
+app.use("/api/orders", require("./routes/orderRouter"));
+
+// Database Connection
 mongoose
-  .connect(process.env.MONGO_URL)
-  .then(() => {
-    console.log("Connected to the database");
-  })
-  .catch((err) => {
-    console.log("Connection failed");
-  });
+  .connect(process.env.MONGO_URI)
+  .then(() => console.log("✅ MongoDB Connected to Githmi Sport DB"))
+  .catch((err) => console.error("❌ DB Connection Error:", err));
 
-app.use(bodyParser.json());
-app.use(verifyJWT);
-
-app.use("/api/user", userRouter);
-app.use("/api/product", productRouter);
-app.use("/api/order", orderRouter);
-
-app.listen(5000, () => {
-  console.log("Server is running on port 5000");
-});
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));

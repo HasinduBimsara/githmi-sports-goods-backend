@@ -1,16 +1,18 @@
-import jwt from "jsonwebtoken";
-import dotenv from "dotenv";
-dotenv.config();
-export default function verifyJWT(req, res, next) {
-  const header = req.header("Authorization");
-  if (header != null) {
-    const token = header.replace("Bearer ", "");
-    jwt.verify(token, process.env.JWT_KEY, (err, decoded) => {
-      console.log(decoded);
-      if (decoded != null) {
-        req.user = decoded;
-      }
+const jwt = require("jsonwebtoken");
+
+const auth = (req, res, next) => {
+  try {
+    const token = req.header("Authorization");
+    if (!token) return res.status(400).json({ msg: "Invalid Authentication." });
+
+    jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, user) => {
+      if (err) return res.status(400).json({ msg: "Invalid Authentication." });
+      req.user = user;
+      next();
     });
+  } catch (err) {
+    return res.status(500).json({ msg: err.message });
   }
-  next();
-}
+};
+
+module.exports = auth;
