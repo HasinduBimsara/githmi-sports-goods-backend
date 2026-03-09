@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const { verifyToken, adminOnly } = require("../middleware/auth");
+const { verifyToken, adminOnly } = require("../middlewear/auth");
 const {
   getReviews,
   getReviewById,
@@ -8,7 +8,7 @@ const {
   approveReview,
   updateReview,
   deleteReview,
-} = require("../controllers/reviewController");
+} = require("../controller/reviewController");
 
 router.get("/", getReviews);
 router.get("/:id", getReviewById);

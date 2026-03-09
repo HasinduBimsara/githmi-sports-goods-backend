@@ -9,45 +9,26 @@ const orderRoutes = require("./routes/orderRoutes");
 const reviewRoutes = require("./routes/reviewRoutes");
 
 const app = express();
+const PORT = process.env.PORT || 5000;
+const FRONTEND_URL = process.env.FRONTEND_URL || process.env.CLIENT_URL || "*";
 
-// ──────────────────────────────────────────
-// Middleware
-// ──────────────────────────────────────────
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL || "*",
+    origin: FRONTEND_URL,
     credentials: true,
   }),
 );
 app.use(express.json());
 
-// ──────────────────────────────────────────
-// MongoDB Connection
-// ──────────────────────────────────────────
-mongoose
-  .connect(process.env.MONGO_URI)
-  .then(() => console.log("✅ MongoDB connected successfully"))
-  .catch((err) => {
-    console.error("❌ MongoDB connection error:", err.message);
-    process.exit(1);
-  });
-
-// ──────────────────────────────────────────
-// Routes
-// ──────────────────────────────────────────
 app.use("/api/user", userRoutes);
 app.use("/api/product", productRoutes);
 app.use("/api/order", orderRoutes);
 app.use("/api/reviews", reviewRoutes);
 
-// Health check
 app.get("/", (req, res) => {
-  res.json({ message: "Githmi Sports Goods API is running 🏏" });
+  res.json({ message: "Githmi Sports Goods API is running" });
 });
 
-// ──────────────────────────────────────────
-// Global Error Handler
-// ──────────────────────────────────────────
 app.use((err, req, res, next) => {
   console.error("Server error:", err.stack);
   res
@@ -55,10 +36,28 @@ app.use((err, req, res, next) => {
     .json({ message: "Internal server error", error: err.message });
 });
 
-// ──────────────────────────────────────────
-// Start Server
-// ──────────────────────────────────────────
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
+const startServer = async () => {
+  if (!process.env.MONGO_URI) {
+    throw new Error("MONGO_URI is missing in .env");
+  }
+
+  if (process.env.MONGO_URI.includes("<db_username>")) {
+    throw new Error(
+      "MONGO_URI still contains placeholder values. Replace <db_username> and <db_password> in .env",
+    );
+  }
+
+  await mongoose.connect(process.env.MONGO_URI, {
+    serverSelectionTimeoutMS: 10000,
+  });
+  console.log("MongoDB connected successfully");
+
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+  });
+};
+
+startServer().catch((err) => {
+  console.error("Startup error:", err.message);
+  process.exit(1);
 });

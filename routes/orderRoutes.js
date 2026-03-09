@@ -1,13 +1,13 @@
 const express = require("express");
 const router = express.Router();
-const { verifyToken, adminOnly } = require("../middleware/auth");
+const { verifyToken, adminOnly } = require("../middlewear/auth");
 const {
   getAllOrders,
   getMyOrders,
   getOrderById,
   createOrder,
   updateOrderStatus,
-} = require("../controllers/orderController");
+} = require("../controller/orderController");
 
 router.get("/", verifyToken, adminOnly, getAllOrders);
 router.get("/my", verifyToken, getMyOrders);
