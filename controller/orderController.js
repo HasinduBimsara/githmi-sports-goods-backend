@@ -1,5 +1,5 @@
 const Order = require("../models/Order");
-const Product = require("../models/Product");
+const Product = require("../models/product");
 const { sendOrderConfirmationEmail } = require("../utils/sendMail");
 
 // @desc    Get all orders
@@ -72,11 +72,9 @@ const createOrder = async (req, res) => {
     const { name, address, phoneNumber, items } = req.body;
 
     if (!name || !address || !phoneNumber || !items?.length)
-      return res
-        .status(400)
-        .json({
-          message: "name, address, phoneNumber, and items are required",
-        });
+      return res.status(400).json({
+        message: "name, address, phoneNumber, and items are required",
+      });
 
     // Build bill items from server-side product data
     let total = 0;
@@ -154,11 +152,9 @@ const updateOrderStatus = async (req, res) => {
     const validStatuses = ["Pending", "Processing", "Delivered", "Cancelled"];
 
     if (!validStatuses.includes(status))
-      return res
-        .status(400)
-        .json({
-          message: `Invalid status. Must be one of: ${validStatuses.join(", ")}`,
-        });
+      return res.status(400).json({
+        message: `Invalid status. Must be one of: ${validStatuses.join(", ")}`,
+      });
 
     const order = await Order.findOne({ orderId: req.params.orderId });
     if (!order) return res.status(404).json({ message: "Order not found" });

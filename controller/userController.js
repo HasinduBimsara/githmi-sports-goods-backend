@@ -1,5 +1,5 @@
-const User = require("../models/User");
-const OTP = require("../models/OTP");
+const User = require("../models/user");
+const OTP = require("../models/otp");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const axios = require("axios");
@@ -50,13 +50,11 @@ const registerUser = async (req, res) => {
     });
     const token = generateToken(user);
 
-    res
-      .status(201)
-      .json({
-        message: "User registered successfully",
-        token,
-        user: safeUser(user),
-      });
+    res.status(201).json({
+      message: "User registered successfully",
+      token,
+      user: safeUser(user),
+    });
   } catch (err) {
     res.status(500).json({ message: "Server error", error: err.message });
   }
