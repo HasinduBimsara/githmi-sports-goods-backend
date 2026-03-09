@@ -1,4 +1,4 @@
-const Product = require("../models/Product");
+const Product = require("../models/product");
 
 // @desc    Get all products (with search, filter, pagination)
 // @route   GET /api/product
