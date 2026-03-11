@@ -1,5 +1,5 @@
-const User = require("../models/user");
-const OTP = require("../models/otp");
+const User = require("../models/User");
+const OTP = require("../models/OTP");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const axios = require("axios");
@@ -137,7 +137,7 @@ const getCurrentUser = async (req, res) => {
   try {
     const user = await User.findById(req.user.id).select("-password");
     if (!user) return res.status(404).json({ message: "User not found" });
-    res.json(user);
+    res.json({ user });
   } catch (err) {
     res.status(500).json({ message: "Server error", error: err.message });
   }
@@ -173,9 +173,10 @@ const sendOTP = async (req, res) => {
 // @access  Public
 const changePassword = async (req, res) => {
   try {
-    const { email, otp, newPassword } = req.body;
+    const { email, otp, newPassword, password } = req.body;
+    const nextPassword = newPassword || password;
 
-    if (!email || !otp || !newPassword)
+    if (!email || !otp || !nextPassword)
       return res
         .status(400)
         .json({ message: "Email, OTP, and new password are required" });
@@ -192,7 +193,7 @@ const changePassword = async (req, res) => {
       return res.status(400).json({ message: "OTP has expired" });
     }
 
-    const hashedPassword = await bcrypt.hash(newPassword, 12);
+    const hashedPassword = await bcrypt.hash(nextPassword, 12);
     await User.findOneAndUpdate({ email }, { password: hashedPassword });
     await OTP.deleteOne({ email });
 
