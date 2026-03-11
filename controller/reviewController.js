@@ -75,7 +75,14 @@ const createReview = async (req, res) => {
         .status(400)
         .json({ message: "Rating must be between 1 and 5" });
 
-    const existing = await Review.findOne({ productId, email: req.user.email });
+    if (!req.user) {
+      return res.status(401).json({ message: "Authentication required" });
+    }
+
+    const reviewEmail = req.user.email;
+    const reviewName = `${req.user.firstName} ${req.user.lastName}`.trim();
+
+    const existing = await Review.findOne({ productId, email: reviewEmail });
     if (existing)
       return res
         .status(400)
@@ -83,13 +90,13 @@ const createReview = async (req, res) => {
 
     const review = await Review.create({
       productId,
-      name: `${req.user.firstName} ${req.user.lastName}`,
-      email: req.user.email,
+      name: reviewName,
+      email: reviewEmail,
       title,
       comment,
       rating,
-      avatar: avatar || req.user.profilePicture || "",
-      role: req.user.role,
+      avatar: avatar || req.user?.profilePicture || "",
+      role: req.user?.role || "Customer",
       isApproved: false,
     });
 
