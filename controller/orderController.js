@@ -1,5 +1,5 @@
 const Order = require("../models/Order");
-const Product = require("../models/product");
+const Product = require("../models/Product");
 const { sendOrderConfirmationEmail } = require("../utils/sendMail");
 
 // @desc    Get all orders
@@ -69,11 +69,13 @@ const getOrderById = async (req, res) => {
 // @access  Protected
 const createOrder = async (req, res) => {
   try {
-    const { name, address, phoneNumber, items } = req.body;
+    const { name, address, phoneNumber } = req.body;
+    const items = req.body.items || req.body.billItems;
 
     if (!name || !address || !phoneNumber || !items?.length)
       return res.status(400).json({
-        message: "name, address, phoneNumber, and items are required",
+        message:
+          "name, address, phoneNumber, and at least one order item are required",
       });
 
     // Build bill items from server-side product data
