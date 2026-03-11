@@ -1,4 +1,4 @@
-const Product = require("../models/product");
+const Product = require("../models/Product");
 
 // @desc    Get all products (with search, filter, pagination)
 // @route   GET /api/product
@@ -66,19 +66,21 @@ const getProductById = async (req, res) => {
 // @access  Admin
 const createProduct = async (req, res) => {
   try {
-    const { productId, name, price, stock, category, images } = req.body;
+    const { productId, name, price, labeledPrice, stock, category, images } =
+      req.body;
 
     if (
       !productId ||
       !name ||
       !price ||
+      !labeledPrice ||
       stock === undefined ||
       !category ||
       !images?.length
     )
       return res.status(400).json({
         message:
-          "productId, name, price, stock, category, and at least one image are required",
+          "productId, name, price, labeledPrice, stock, category, and at least one image are required",
       });
 
     const existing = await Product.findOne({
