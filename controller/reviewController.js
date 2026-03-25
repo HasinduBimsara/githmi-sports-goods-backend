@@ -97,12 +97,12 @@ const createReview = async (req, res) => {
       rating,
       avatar: avatar || req.user?.profilePicture || "",
       role: req.user?.role || "Customer",
-      isApproved: false,
+      isApproved: true,
     });
 
     res
       .status(201)
-      .json({ message: "Review submitted and pending approval", review });
+      .json({ message: "Review submitted successfully", review });
   } catch (err) {
     res.status(500).json({ message: "Server error", error: err.message });
   }
