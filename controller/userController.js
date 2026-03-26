@@ -228,6 +228,24 @@ const deleteUser = async (req, res) => {
   }
 };
 
+// @desc    Make a user admin (Development only)
+// @route   GET /api/user/makeMeAdmin/:email
+const makeMeAdmin = async (req, res) => {
+  try {
+    const user = await User.findOneAndUpdate(
+      { email: req.params.email },
+      { role: "admin" },
+      { new: true }
+    );
+    if (!user) return res.status(404).json({ message: "User not found with that email" });
+    
+    // We send HTML so it displays nicely in the browser
+    res.send(`<h1>Success!</h1><p><b>${user.email}</b> is now an admin!</p><p>Please completely log out of the frontend and log back in to get your new Admin token.</p>`);
+  } catch (err) {
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
 module.exports = {
   registerUser,
   loginUser,
@@ -237,4 +255,5 @@ module.exports = {
   changePassword,
   getAllUsers,
   deleteUser,
+  makeMeAdmin,
 };
