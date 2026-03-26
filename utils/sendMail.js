@@ -133,4 +133,38 @@ const sendOrderConfirmationEmail = async (toEmail, order) => {
   await transporter.sendMail(mailOptions);
 };
 
-module.exports = { sendOTPEmail, sendOrderConfirmationEmail };
+// ──────────────────────────────────────────
+// Send Admin Reply Email
+// ──────────────────────────────────────────
+const sendReplyEmail = async (toEmail, customerName, originalSubject, replyMessage) => {
+  const transporter = createTransporter();
+
+  const mailOptions = {
+    from: `"Githmi Sports Goods Team" <${process.env.EMAIL_USER}>`,
+    to: toEmail,
+    subject: `Re: ${originalSubject}`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;
+                  background: #f8f6fb; padding: 30px; border-radius: 12px;">
+        <div style="text-align: center; margin-bottom: 24px;">
+          <h1 style="color: #4f46e5; margin: 0;">Githmi Sports Goods</h1>
+        </div>
+        
+        <div style="background: white; border-radius: 12px; padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+          <p style="color: #374151; font-size: 16px;">Hi <strong>${customerName}</strong>,</p>
+          <div style="color: #4b5563; font-size: 15px; line-height: 1.6; white-space: pre-wrap; margin: 20px 0;">${replyMessage}</div>
+          
+          <hr style="border: 0; border-top: 1px solid #e5e7eb; margin: 30px 0;" />
+          <p style="color: #9ca3af; font-size: 13px; font-style: italic;">
+            In response to your inquiry regarding:<br/>
+            "${originalSubject}"
+          </p>
+        </div>
+      </div>
+    `,
+  };
+
+  await transporter.sendMail(mailOptions);
+};
+
+module.exports = { sendOTPEmail, sendOrderConfirmationEmail, sendReplyEmail };
