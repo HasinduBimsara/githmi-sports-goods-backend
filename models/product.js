@@ -50,6 +50,18 @@ const productSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    isBestDeal: {
+      type: Boolean,
+      default: false,
+    },
+    isLatest: {
+      type: Boolean,
+      default: false,
+    },
+    isReadyToShip: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true },
 );
