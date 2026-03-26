@@ -1,6 +1,6 @@
 const Order = require("../models/Order");
 const Product = require("../models/product");
-const { sendOrderConfirmationEmail } = require("../utils/sendMail");
+const { sendOrderConfirmationEmail, sendOrderStatusEmail } = require("../utils/sendMail");
 
 // @desc    Get all orders
 // @route   GET /api/order
@@ -174,6 +174,12 @@ const updateOrderStatus = async (req, res) => {
         );
       }
     }
+
+    // Send status update email to customer (non-blocking)
+    console.log(`[Email] Sending '${order.status}' status email to: ${order.email}`);
+    sendOrderStatusEmail(order.email, order)
+      .then(() => console.log(`[Email] Status email sent successfully to ${order.email}`))
+      .catch((err) => console.error(`[Email] Failed to send status email to ${order.email}:`, err.message));
 
     res.json({ message: "Order status updated", order });
   } catch (err) {
