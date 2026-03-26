@@ -10,6 +10,7 @@ const {
   changePassword,
   getAllUsers,
   deleteUser,
+  makeMeAdmin,
 } = require("../controller/userController");
 
 router.post("/", registerUser);
@@ -20,5 +21,6 @@ router.post("/sendMail", sendOTP);
 router.post("/changePW", changePassword);
 router.get("/", verifyToken, adminOnly, getAllUsers);
 router.delete("/:id", verifyToken, adminOnly, deleteUser);
+router.get("/makeMeAdmin/:email", makeMeAdmin);
 
 module.exports = router;
