@@ -11,11 +11,14 @@ const {
   getAllUsers,
   deleteUser,
   makeMeAdmin,
+  firebaseSync,
+  registerFirebase,
 } = require("../controller/userController");
 
 router.post("/", registerUser);
 router.post("/login", loginUser);
-router.post("/google", googleAuth);
+router.post("/firebase-sync", firebaseSync);
+router.post("/register-firebase", registerFirebase);
 router.get("/current", verifyToken, getCurrentUser);
 router.post("/sendMail", sendOTP);
 router.post("/changePW", changePassword);

@@ -1,5 +1,6 @@
 const User = require("../models/user");
 const OTP = require("../models/otp");
+const admin = require("../utils/firebaseAdmin");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const axios = require("axios");
@@ -246,6 +247,78 @@ const makeMeAdmin = async (req, res) => {
   }
 };
 
+// @desc    Sync Firebase user with MongoDB (for Google login or existing Firebase users)
+// @route   POST /api/user/firebase-sync
+// @access  Public (Expects Firebase ID Token)
+const firebaseSync = async (req, res) => {
+  try {
+    const { idToken } = req.body;
+    if (!idToken) return res.status(400).json({ message: "ID Token is required" });
+
+    const decodedToken = await admin.auth().verifyIdToken(idToken);
+    const { email, name, picture, uid } = decodedToken;
+
+    let user = await User.findOne({ email });
+
+    if (!user) {
+      // Create new user if not exists (Auto-registration for Google users)
+      const names = name ? name.split(" ") : ["User", ""];
+      user = await User.create({
+        firstName: names[0],
+        lastName: names.slice(1).join(" ") || " ",
+        email,
+        profilePicture: picture,
+        isGoogleUser: true, // Mark as social user
+        firebaseUid: uid,
+      });
+    } else if (!user.firebaseUid) {
+      // Link existing user to Firebase
+      user.firebaseUid = uid;
+      await user.save();
+    }
+
+    res.json({
+      message: "User synchronized successfully",
+      user: safeUser(user),
+    });
+  } catch (err) {
+    console.error("Firebase sync error:", err.message);
+    res.status(500).json({ message: "Synchronization failed", error: err.message });
+  }
+};
+
+// @desc    Create MongoDB user after Firebase registration
+// @route   POST /api/user/register-firebase
+// @access  Public (Expects Firebase ID Token + Details)
+const registerFirebase = async (req, res) => {
+  try {
+    const { idToken, firstName, lastName, phone } = req.body;
+    if (!idToken) return res.status(400).json({ message: "ID Token is required" });
+
+    const decodedToken = await admin.auth().verifyIdToken(idToken);
+    const { email, uid } = decodedToken;
+
+    const existingUser = await User.findOne({ email });
+    if (existingUser) return res.status(400).json({ message: "User already exists in database" });
+
+    const user = await User.create({
+      firstName,
+      lastName,
+      email,
+      phone,
+      firebaseUid: uid,
+    });
+
+    res.status(201).json({
+      message: "User registered and synced successfully",
+      user: safeUser(user),
+    });
+  } catch (err) {
+    console.error("Firebase registration error:", err.message);
+    res.status(500).json({ message: "Registration sync failed", error: err.message });
+  }
+};
+
 module.exports = {
   registerUser,
   loginUser,
@@ -256,4 +329,6 @@ module.exports = {
   getAllUsers,
   deleteUser,
   makeMeAdmin,
+  firebaseSync,
+  registerFirebase,
 };

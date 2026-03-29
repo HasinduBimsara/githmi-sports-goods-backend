@@ -40,6 +40,11 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    firebaseUid: {
+      type: String,
+      unique: true,
+      sparse: true, // Allow nulls for old users
+    },
   },
   { timestamps: true },
 );

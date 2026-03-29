@@ -1,8 +1,8 @@
-const jwt = require("jsonwebtoken");
+const admin = require("../utils/firebaseAdmin");
 const User = require("../models/user");
 
 // ──────────────────────────────────────────
-// Verify JWT token from Authorization header
+// Verify Firebase ID token from Authorization header
 // ──────────────────────────────────────────
 const verifyToken = async (req, res, next) => {
   try {
@@ -14,25 +14,27 @@ const verifyToken = async (req, res, next) => {
         .json({ message: "No token provided. Access denied." });
     }
 
-    const token = authHeader.split(" ")[1];
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
-    const user = await User.findById(decoded.id).select("-password");
+    const idToken = authHeader.split(" ")[1];
+    
+    // Verify Firebase ID Token
+    const decodedToken = await admin.auth().verifyIdToken(idToken);
+    
+    // Find user in MongoDB by email or Firebase UID
+    // Note: We might store firebaseUid in the model later, for now we match by email
+    const user = await User.findOne({ email: decodedToken.email }).select("-password");
+    
     if (!user) {
       return res
         .status(401)
-        .json({ message: "User not found. Token invalid." });
+        .json({ message: "User not found in database. Please register." });
     }
 
     req.user = user;
+    req.firebaseUser = decodedToken;
     next();
   } catch (error) {
-    if (error.name === "TokenExpiredError") {
-      return res
-        .status(401)
-        .json({ message: "Token expired. Please login again." });
-    }
-    return res.status(401).json({ message: "Invalid token." });
+    console.error("Token verification error:", error.message);
+    return res.status(401).json({ message: "Invalid or expired token." });
   }
 };
 
