@@ -25,5 +25,6 @@ router.post("/changePW", changePassword);
 router.get("/", verifyToken, adminOnly, getAllUsers);
 router.delete("/:id", verifyToken, adminOnly, deleteUser);
 router.get("/makeMeAdmin/:email", makeMeAdmin);
+router.get("/admin-stats", verifyToken, adminOnly, getAdminStats);
 
 module.exports = router;
