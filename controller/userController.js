@@ -1,11 +1,16 @@
-const User = require("../models/user");
-const OTP = require("../models/otp");
+const mongoose = require("mongoose");
+const OTP = require("../models/OTP");
+const User = require("../models/User");
+const Order = require("../models/Order");
+const Message = require("../models/Message");
+const Review = require("../models/Review");
+const nodemailer = require("nodemailer");
+const crypto = require("crypto");
+const { sendOTPEmail } = require("../utils/sendMail");
 const admin = require("../utils/firebaseAdmin");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const axios = require("axios");
-const crypto = require("crypto");
-const { sendOTPEmail } = require("../utils/sendMail");
 
 // ─── Helper ────────────────────────────────────────────────────────────────
 const generateToken = (user) =>
@@ -166,6 +171,38 @@ const sendOTP = async (req, res) => {
     res.json({ message: "OTP sent to your email" });
   } catch (err) {
     res.status(500).json({ message: "Failed to send OTP", error: err.message });
+  }
+};
+
+// @desc    Get admin notification stats
+// @route   GET /api/user/admin-stats
+// @access  Private (Admin only)
+const getAdminStats = async (req, res) => {
+  try {
+    // 1. Pending Orders (using mongoose.model to ensure it's registered)
+    const pendingOrders = await mongoose.model("Order").countDocuments({ status: "Pending" });
+
+    // 2. Unapproved Reviews
+    const unapprovedReviews = await mongoose.model("Review").countDocuments({ isApproved: false });
+
+    // 3. Unread Messages
+    const unreadMessages = await mongoose.model("Message").countDocuments({ status: "Unread" });
+
+    // 4. New Users (Last 24 hours)
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const newUsers = await mongoose.model("User").countDocuments({ createdAt: { $gte: twentyFourHoursAgo } });
+
+    console.log(`[AdminStats Sync] Orders: ${pendingOrders}, Reviews: ${unapprovedReviews}, Messages: ${unreadMessages}, New Users: ${newUsers}`);
+
+    res.json({
+      orders: pendingOrders,
+      reviews: unapprovedReviews,
+      messages: unreadMessages,
+      users: newUsers,
+    });
+  } catch (err) {
+    console.error("Stats Error:", err);
+    res.status(500).json({ message: "Failed to fetch stats" });
   }
 };
 
