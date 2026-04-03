@@ -204,7 +204,14 @@ mongoose.connection.on("disconnected", () => {
   scheduleReconnect();
 });
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+if (process.env.NODE_ENV !== "production") {
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+    void connectToMongo();
+  });
+} else {
+  // Connect to Mongo when initialized in serverless environment
   void connectToMongo();
-});
+}
+
+module.exports = app;
