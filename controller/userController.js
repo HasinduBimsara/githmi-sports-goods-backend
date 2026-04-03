@@ -368,4 +368,5 @@ module.exports = {
   makeMeAdmin,
   firebaseSync,
   registerFirebase,
+  getAdminStats,
 };
