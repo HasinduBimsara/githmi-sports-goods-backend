@@ -13,6 +13,7 @@ const {
   makeMeAdmin,
   firebaseSync,
   registerFirebase,
+  getAdminStats,
 } = require("../controller/userController");
 
 router.post("/", registerUser);
