@@ -1,6 +1,11 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
+const helmet = require("helmet");
+const rateLimit = require("express-rate-limit");
+const mongoSanitize = require("express-mongo-sanitize");
+const xss = require("xss-clean");
+const hpp = require("hpp");
 require("dotenv").config();
 
 mongoose.set("bufferCommands", false);
@@ -106,6 +111,19 @@ app.use(
   }),
 );
 app.use(express.json());
+
+// Security Middlewares
+app.use(helmet({ crossOriginResourcePolicy: false }));
+app.use(mongoSanitize());
+app.use(xss());
+app.use(hpp());
+
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, 
+  max: 150, 
+  message: "Too many requests from this IP, please try again later",
+});
+app.use("/api", limiter);
 
 app.get("/health", (req, res) => {
   const database = getDatabaseStatus();
