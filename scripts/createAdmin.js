@@ -4,7 +4,7 @@ require("dotenv").config({ path: path.join(__dirname, "../.env") });
 const admin = require("../utils/firebaseAdmin");
 const User = require("../models/user");
 
-const email = "bimsarapremarathna123@gmail.com";
+const email = "githmisportgoods@gmail.com";
 const password = "123456"; // Firebase requires min 6 characters! (Changed from 12345)
 const firstName = "Hasindu";
 const lastName = "Bimsara";

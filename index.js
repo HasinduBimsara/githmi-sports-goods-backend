@@ -1,6 +1,7 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
+const morgan = require("morgan");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 const mongoSanitize = require("express-mongo-sanitize");
@@ -16,6 +17,7 @@ const orderRoutes = require("./routes/orderRoutes");
 const reviewRoutes = require("./routes/reviewRoutes");
 const messageRoutes = require("./routes/messageRoutes");
 const uploadRoutes = require("./routes/uploadRoutes");
+const statsRoutes = require("./routes/statsRoutes");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -32,6 +34,7 @@ const getAllowedOrigins = (rawOrigins) => {
   return rawOrigins
     .split(",")
     .map((origin) => normalizeOrigin(origin.trim()))
+    .concat(["http://localhost:5174", "http://localhost:5173", "http://localhost:5175"]) // Fallback force inject
     .filter(Boolean);
 };
 
@@ -112,6 +115,8 @@ app.use(
 );
 app.use(express.json());
 
+app.use(morgan(process.env.NODE_ENV === "production" ? "combined" : "dev"));
+
 // Security Middlewares
 app.use(helmet({ crossOriginResourcePolicy: false }));
 app.use(mongoSanitize());
@@ -157,6 +162,7 @@ app.use("/api/order", orderRoutes);
 app.use("/api/reviews", reviewRoutes);
 app.use("/api/messages", messageRoutes);
 app.use("/api/upload", uploadRoutes);
+app.use("/api/stats", statsRoutes);
 
 app.get("/", (req, res) => {
   res.json({

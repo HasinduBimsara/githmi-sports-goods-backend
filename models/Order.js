@@ -57,6 +57,9 @@ const orderSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
+orderSchema.index({ email: 1 });
+orderSchema.index({ status: 1 });
+
 // Auto-generate orderId before saving
 orderSchema.pre("save", async function (next) {
   if (!this.orderId) {

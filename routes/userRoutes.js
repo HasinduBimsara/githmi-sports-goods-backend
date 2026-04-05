@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const { verifyToken, adminOnly } = require("../middlewear/auth");
+const { verifyToken, adminOnly } = require("../middlewares/auth");
 const {
   registerUser,
   loginUser,
@@ -14,7 +14,7 @@ const {
   firebaseSync,
   registerFirebase,
   getAdminStats,
-} = require("../controller/userController");
+} = require("../controllers/userController");
 
 router.post("/", registerUser);
 router.post("/login", loginUser);

@@ -8,7 +8,7 @@ const fixAdmin = async () => {
     await mongoose.connect(process.env.MONGO_URI);
     console.log("Connected to MongoDB");
 
-    const email = "bimsarapremarathna123@gmail.com";
+    const email = "githmisportgoods@gmail.com";
     const password = "12345";
     const hashedPassword = await bcrypt.hash(password, 12);
 

@@ -6,9 +6,9 @@ const {
   updateMessageStatus,
   deleteMessage,
   replyToMessage,
-} = require("../controller/messageController");
+} = require("../controllers/messageController");
 
-const { verifyToken, adminOnly } = require("../middlewear/auth");
+const { verifyToken, adminOnly } = require("../middlewares/auth");
 
 router.post("/", createMessage);
 router.get("/", verifyToken, adminOnly, getMessages);
