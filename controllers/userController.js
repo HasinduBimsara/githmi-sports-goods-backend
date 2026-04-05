@@ -181,6 +181,7 @@ const getAdminStats = async (req, res) => {
   try {
     // 1. Pending Orders (using mongoose.model to ensure it's registered)
     const pendingOrders = await mongoose.model("Order").countDocuments({ status: "Pending" });
+    const processingOrders = await mongoose.model("Order").countDocuments({ status: "Processing" });
 
     // 2. Unapproved Reviews
     const unapprovedReviews = await mongoose.model("Review").countDocuments({ isApproved: false });
@@ -192,10 +193,15 @@ const getAdminStats = async (req, res) => {
     const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
     const newUsers = await mongoose.model("User").countDocuments({ createdAt: { $gte: twentyFourHoursAgo } });
 
-    console.log(`[AdminStats Sync] Orders: ${pendingOrders}, Reviews: ${unapprovedReviews}, Messages: ${unreadMessages}, New Users: ${newUsers}`);
+    // 5. New Products (Last 24 hours)
+    const newProducts = await mongoose.model("Product").countDocuments({ createdAt: { $gte: twentyFourHoursAgo } });
+
+    console.log(`[AdminStats Sync] Orders: ${pendingOrders}, Processing: ${processingOrders}, Products: ${newProducts}`);
 
     res.json({
       orders: pendingOrders,
+      processingOrders: processingOrders,
+      products: newProducts,
       reviews: unapprovedReviews,
       messages: unreadMessages,
       users: newUsers,
