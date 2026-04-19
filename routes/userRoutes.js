@@ -14,6 +14,7 @@ const {
   firebaseSync,
   registerFirebase,
   getAdminStats,
+  updateProfile,
 } = require("../controllers/userController");
 
 router.post("/", registerUser);
@@ -21,6 +22,7 @@ router.post("/login", loginUser);
 router.post("/firebase-sync", firebaseSync);
 router.post("/register-firebase", registerFirebase);
 router.get("/current", verifyToken, getCurrentUser);
+router.put("/profile", verifyToken, updateProfile);
 router.post("/sendMail", sendOTP);
 router.post("/changePW", changePassword);
 router.get("/", verifyToken, adminOnly, getAllUsers);

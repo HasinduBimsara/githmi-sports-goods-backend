@@ -362,6 +362,34 @@ const registerFirebase = async (req, res) => {
   }
 };
 
+// @desc    Update user profile details
+// @route   PUT /api/user/profile
+// @access  Protected
+const updateProfile = async (req, res) => {
+  try {
+    const { firstName, lastName, phone, profilePicture } = req.body;
+    const userToUpdate = await User.findById(req.user.id);
+    
+    if (!userToUpdate) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    if (firstName) userToUpdate.firstName = firstName;
+    if (lastName) userToUpdate.lastName = lastName;
+    if (phone) userToUpdate.phone = phone;
+    if (typeof profilePicture !== 'undefined') userToUpdate.profilePicture = profilePicture;
+
+    const updatedUser = await userToUpdate.save();
+
+    res.json({
+      message: "Profile updated successfully",
+      user: safeUser(updatedUser),
+    });
+  } catch (err) {
+    res.status(500).json({ message: "Failed to update profile", error: err.message });
+  }
+};
+
 module.exports = {
   registerUser,
   loginUser,
@@ -375,4 +403,5 @@ module.exports = {
   firebaseSync,
   registerFirebase,
   getAdminStats,
+  updateProfile,
 };
