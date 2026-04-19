@@ -6,6 +6,8 @@ const billItemSchema = new mongoose.Schema({
   image: { type: String, default: "" },
   quantity: { type: Number, required: true, min: 1 },
   price: { type: Number, required: true },
+  size: { type: String, default: "" },
+  color: { type: String, default: "" },
 });
 
 const orderSchema = new mongoose.Schema(
