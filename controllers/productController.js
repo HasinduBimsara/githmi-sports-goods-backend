@@ -1,4 +1,4 @@
-const Product = require("../models/product");
+const Product = require("../models/Product");
 
 // @desc    Get all products (with search, filter, pagination)
 // @route   GET /api/product
@@ -66,8 +66,15 @@ const getProductById = async (req, res) => {
 // @access  Admin
 const createProduct = async (req, res) => {
   try {
-    const { productId, name, price, labeledPrice, stock, category, images } =
-      req.body;
+    let { productId, name, price, labeledPrice, stock, category, images, sizes, colors } = req.body;
+
+    // Parse stringified arrays from FormData if necessary
+    if (typeof sizes === "string") {
+      try { sizes = JSON.parse(sizes); } catch(e) { sizes = []; }
+    }
+    if (typeof colors === "string") {
+      try { colors = JSON.parse(colors); } catch(e) { colors = []; }
+    }
 
     if (
       !productId ||
@@ -77,11 +84,20 @@ const createProduct = async (req, res) => {
       stock === undefined ||
       !category ||
       !images?.length
-    )
+    ) {
       return res.status(400).json({
         message:
           "productId, name, price, labeledPrice, stock, category, and at least one image are required",
       });
+    }
+
+    // Override values for creation
+    const productData = {
+      ...req.body,
+      productId: productId.toUpperCase(),
+      sizes: sizes || [],
+      colors: colors || []
+    };
 
     const existing = await Product.findOne({
       productId: productId.toUpperCase(),
@@ -89,10 +105,7 @@ const createProduct = async (req, res) => {
     if (existing)
       return res.status(400).json({ message: "Product ID already exists" });
 
-    const product = await Product.create({
-      ...req.body,
-      productId: productId.toUpperCase(),
-    });
+    const product = await Product.create(productData);
 
     res.status(201).json({ message: "Product created successfully", product });
   } catch (err) {
@@ -105,9 +118,17 @@ const createProduct = async (req, res) => {
 // @access  Admin
 const updateProduct = async (req, res) => {
   try {
+    let updateData = { ...req.body };
+    if (typeof updateData.sizes === "string") {
+      try { updateData.sizes = JSON.parse(updateData.sizes); } catch(e) { updateData.sizes = []; }
+    }
+    if (typeof updateData.colors === "string") {
+      try { updateData.colors = JSON.parse(updateData.colors); } catch(e) { updateData.colors = []; }
+    }
+
     const product = await Product.findOneAndUpdate(
       { productId: req.params.productId.toUpperCase() },
-      req.body,
+      updateData,
       { new: true, runValidators: true },
     );
 

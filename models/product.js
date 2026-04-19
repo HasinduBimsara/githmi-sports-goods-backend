@@ -18,6 +18,22 @@ const productSchema = new mongoose.Schema(
       type: [String],
       default: [],
     },
+    colors: {
+      type: [String],
+      default: [],
+    },
+    sizes: {
+      type: [
+        {
+          color: { type: String, default: "" },
+          size: { type: String, required: true },
+          price: { type: Number, required: true },
+          labeledPrice: { type: Number },
+          stock: { type: Number, default: 0 },
+        }
+      ],
+      default: [],
+    },
     price: {
       type: Number,
       required: [true, "Price is required"],
