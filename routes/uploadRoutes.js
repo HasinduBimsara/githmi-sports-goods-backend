@@ -7,10 +7,21 @@ const { verifyToken, adminOnly } = require("../middlewares/auth");
 
 const storage = new CloudinaryStorage({
   cloudinary,
-  params: {
-    folder: "githmi-sports-products",
-    allowed_formats: ["jpg", "jpeg", "png", "webp"],
-    transformation: [{ width: 1200, height: 1200, crop: "limit", quality: "auto" }],
+  params: async (req, file) => {
+    let folderName = "githmi-sports-products/Uncategorized";
+    
+    if (req.body.folderName) {
+      const sanitized = req.body.folderName.replace(/[^a-zA-Z0-9 _-]/g, "").trim();
+      if (sanitized) {
+        folderName = `githmi-sports-products/${sanitized}`;
+      }
+    }
+
+    return {
+      folder: folderName,
+      allowed_formats: ["jpg", "jpeg", "png", "webp"],
+      transformation: [{ width: 1200, height: 1200, crop: "limit", quality: "auto" }],
+    };
   },
 });
 
