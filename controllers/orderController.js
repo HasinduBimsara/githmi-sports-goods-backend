@@ -83,7 +83,7 @@ const createOrder = async (req, res) => {
     const billItems = [];
 
     for (const item of items) {
-      const { productId, quantity } = item;
+      const { productId, quantity, size, color } = item;
 
       if (!productId || !quantity || quantity < 1)
         return res.status(400).json({ message: `Invalid item: ${productId}` });
@@ -97,10 +97,23 @@ const createOrder = async (req, res) => {
           .status(404)
           .json({ message: `Product not found: ${productId}` });
 
-      if (product.stock < quantity)
+      // Check variant stock if size/color specified, else check global stock
+      if (size || color) {
+        const variant = product.sizes.find(s => 
+          (s.size === size || (!s.size && !size)) && 
+          (s.color === (color || "") || (!s.color && !color))
+        );
+        if (variant && variant.stock < quantity) {
+           return res.status(400).json({ message: `Insufficient variant stock for: ${product.name} (${color} ${size})` });
+        } else if (!variant && product.stock < quantity) {
+           // Fallback to global if variation mapping doesn't exist but global exists
+           return res.status(400).json({ message: `Insufficient stock for: ${product.name}` });
+        }
+      } else if (product.stock < quantity) {
         return res
           .status(400)
           .json({ message: `Insufficient stock for: ${product.name}` });
+      }
 
       const itemTotal = product.price * quantity;
       total += itemTotal;
@@ -111,6 +124,8 @@ const createOrder = async (req, res) => {
         image: product.images[0] || "",
         quantity,
         price: product.price,
+        size: size || "",
+        color: color || "",
       });
     }
 
@@ -126,13 +141,8 @@ const createOrder = async (req, res) => {
       date: new Date(),
     });
 
-    // Deduct stock for each item
-    for (const item of items) {
-      await Product.findOneAndUpdate(
-        { productId: item.productId.toUpperCase() },
-        { $inc: { stock: -item.quantity } },
-      );
-    }
+    // NOTE: Stock deduction is now deferred until the order is marked as 'Delivered' 
+    // to ensure inventory levels reflect finalized sales, per user requirements.
 
     // Send confirmation email (non-blocking)
     sendOrderConfirmationEmail(req.user.email, order).catch((err) =>
@@ -165,13 +175,44 @@ const updateOrderStatus = async (req, res) => {
     order.status = status;
     await order.save();
 
-    // Restore stock if cancelled
-    if (status === "Cancelled" && previousStatus !== "Cancelled") {
+    // Logic for Stock Management based on status transitions
+    if (status === "Delivered" && previousStatus !== "Delivered") {
+      // 1. DEDUCT stock when moving TO Delivered (and INCREMENT soldCount)
       for (const item of order.billItems) {
-        await Product.findOneAndUpdate(
-          { productId: item.productId },
-          { $inc: { stock: item.quantity } },
-        );
+        const product = await Product.findOne({ productId: item.productId });
+        if (product) {
+          product.stock = Math.max(0, product.stock - item.quantity);
+          product.soldCount = (product.soldCount || 0) + item.quantity;
+          
+          if (item.size || item.color) {
+            const variantIndex = product.sizes.findIndex(s => 
+               s.size === item.size && (s.color === (item.color || ""))
+            );
+            if (variantIndex !== -1) {
+              product.sizes[variantIndex].stock = Math.max(0, product.sizes[variantIndex].stock - item.quantity);
+            }
+          }
+          await product.save();
+        }
+      }
+    } else if (status !== "Delivered" && previousStatus === "Delivered") {
+      // 2. RESTORE stock when moving AWAY FROM Delivered (and DECREMENT soldCount)
+      for (const item of order.billItems) {
+        const product = await Product.findOne({ productId: item.productId });
+        if (product) {
+          product.stock += item.quantity;
+          product.soldCount = Math.max(0, (product.soldCount || 0) - item.quantity);
+          
+          if (item.size || item.color) {
+            const variantIndex = product.sizes.findIndex(s => 
+               s.size === item.size && (s.color === (item.color || ""))
+            );
+            if (variantIndex !== -1) {
+              product.sizes[variantIndex].stock += item.quantity;
+            }
+          }
+          await product.save();
+        }
       }
     }
 
