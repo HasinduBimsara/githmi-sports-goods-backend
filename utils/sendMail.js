@@ -3,21 +3,33 @@ const nodemailer = require("nodemailer");
 // ──────────────────────────────────────────
 // Create reusable transporter
 // ──────────────────────────────────────────
-const createTransporter = () => {
-  return nodemailer.createTransport({
-    service: "gmail",
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS, // Gmail App Password (NOT your Gmail password)
-    },
-  });
-};
+// ──────────────────────────────────────────
+// Create reusable, pooled transporter
+// ──────────────────────────────────────────
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  pool: true, // Use pooling for better performance and to avoid the "too many connections" issues
+  maxConnections: 5,
+  maxMessages: 100,
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+  },
+});
+
+// Verify connection on startup
+transporter.verify((error) => {
+  if (error) {
+    console.error("[Email] Transporter configuration error:", error.message);
+  } else {
+    console.log("[Email] Server is ready to take our messages");
+  }
+});
 
 // ──────────────────────────────────────────
 // Send OTP Email
 // ──────────────────────────────────────────
 const sendOTPEmail = async (toEmail, otp) => {
-  const transporter = createTransporter();
 
   const mailOptions = {
     from: `"Githmi Sports Goods" <${process.env.EMAIL_USER}>`,
@@ -68,7 +80,6 @@ const sendOTPEmail = async (toEmail, otp) => {
 // Send Order Confirmation Email
 // ──────────────────────────────────────────
 const sendOrderConfirmationEmail = async (toEmail, order) => {
-  const transporter = createTransporter();
 
   const itemsHTML = order.billItems
     .map(
@@ -87,57 +98,97 @@ const sendOrderConfirmationEmail = async (toEmail, order) => {
   const mailOptions = {
     from: `"Githmi Sports Goods" <${process.env.EMAIL_USER}>`,
     to: toEmail,
-    subject: `Order Confirmed - ${order.orderId} | Githmi Sports Goods`,
+    subject: `✅ Order Confirmed - #${order.orderId} | Githmi Sports Goods`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;
                   background: #f8f6fb; padding: 30px; border-radius: 12px;">
         <div style="text-align: center; margin-bottom: 24px;">
-          <h1 style="color: #4f46e5;">Githmi Sports Goods</h1>
-          <p style="color: #22c55e; font-size: 18px; font-weight: bold;">
+          <h1 style="color: #4f46e5; margin: 0;">Githmi Sports Goods</h1>
+          <p style="color: #22c55e; font-size: 18px; font-weight: bold; margin-top: 10px;">
             ✅ Order Confirmed!
           </p>
         </div>
         
-        <div style="background: white; border-radius: 12px; padding: 24px;">
-          <p>Hi <strong>${order.name}</strong>,</p>
-          <p>Your order <strong>#${order.orderId}</strong> has been placed successfully.</p>
+        <div style="background: white; border-radius: 12px; padding: 24px; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+          <p style="font-size: 16px; color: #1f2937;">Hi <strong>${order.name}</strong>,</p>
+          <p style="color: #4b5563; line-height: 1.6;">Your order <strong>#${order.orderId}</strong> has been successfully placed. We're getting things ready for you!</p>
           
           <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
             <thead>
               <tr style="background: #f9fafb;">
-                <th style="padding: 10px; text-align: left;">Product</th>
-                <th style="padding: 10px; text-align: center;">Qty</th>
-                <th style="padding: 10px; text-align: right;">Price</th>
+                <th style="padding: 12px 10px; text-align: left; font-size: 13px; color: #6b7280; border-bottom: 2px solid #edf2f7;">Product</th>
+                <th style="padding: 12px 10px; text-align: center; font-size: 13px; color: #6b7280; border-bottom: 2px solid #edf2f7;">Qty</th>
+                <th style="padding: 12px 10px; text-align: right; font-size: 13px; color: #6b7280; border-bottom: 2px solid #edf2f7;">Total</th>
               </tr>
             </thead>
             <tbody>${itemsHTML}</tbody>
             <tfoot>
               <tr>
-                <td colspan="2" style="padding: 12px; font-weight: bold;">Total</td>
-                <td style="padding: 12px; font-weight: bold; text-align: right; color: #4f46e5;">
+                <td colspan="2" style="padding: 15px 12px; font-weight: bold; text-align: left; color: #1f2937;">Order Total</td>
+                <td style="padding: 15px 12px; font-weight: 800; text-align: right; color: #4f46e5; font-size: 18px;">
                   LKR ${order.total.toFixed(2)}
                 </td>
               </tr>
             </tfoot>
           </table>
           
-          <p style="color: #6b7280; font-size: 14px;">
-            <strong>Delivery Address:</strong> ${order.address}<br/>
-            <strong>Phone:</strong> ${order.phoneNumber}
+          <div style="background: #fdf2f8; border-radius: 8px; padding: 15px; margin-top: 20px;">
+             <p style="margin: 0; color: #9d174d; font-size: 14px;"><strong>Shipping to:</strong> ${order.address}</p>
+             <p style="margin: 5px 0 0; color: #9d174d; font-size: 14px;"><strong>Contact:</strong> ${order.phoneNumber}</p>
+          </div>
+
+          <p style="color: #9ca3af; font-size: 12px; text-align: center; margin-top: 30px;">
+             Need help? Reply to this email or visit our contact page.
           </p>
         </div>
       </div>
     `,
   };
 
-  await transporter.sendMail(mailOptions);
+  // 1. Send to Customer
+  const customerPromise = transporter.sendMail(mailOptions)
+    .then(() => console.log(`[Email] ✅ Confirmation sent to Customer: ${toEmail}`))
+    .catch((err) => console.error(`[Email] ❌ Failed to send to Customer: ${toEmail}`, err.message));
+
+  // 2. Send to Admin (Dedicated Notification)
+  const adminEmail = "githmisportgoods@gmail.com";
+  const adminPromise = transporter.sendMail({
+    from: `"Githmi Admin System" <${process.env.EMAIL_USER}>`,
+    to: adminEmail,
+    subject: `🚨 ACTION REQUIRED: NEW ORDER #${order.orderId}`,
+    html: `
+      <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background: #111827; padding: 30px; border-radius: 12px; color: #f3f4f6;">
+        <div style="text-align: center; border-bottom: 1px solid #374151; padding-bottom: 20px; margin-bottom: 20px;">
+           <span style="background: #ef4444; color: white; padding: 5px 15px; border-radius: 999px; font-size: 12px; font-weight: bold; text-transform: uppercase;">New Order Received</span>
+           <h1 style="color: white; font-size: 24px; margin: 15px 0 5px;">Order #${order.orderId}</h1>
+           <p style="color: #9ca3af; margin: 0;">Total Value: <span style="color: #10b981; font-weight: bold;">LKR ${order.total.toFixed(2)}</span></p>
+        </div>
+
+        <div style="background: #1f2937; border-radius: 8px; padding: 20px; border-left: 4px solid #4f46e5;">
+           <h3 style="margin-top: 0; color: #818cf8;">Customer Info</h3>
+           <p style="margin: 5px 0;"><strong>Name:</strong> ${order.name}</p>
+           <p style="margin: 5px 0;"><strong>Email:</strong> ${order.email}</p>
+           <p style="margin: 5px 0;"><strong>Phone:</strong> ${order.phoneNumber}</p>
+           <p style="margin: 5px 0;"><strong>Address:</strong> ${order.address}</p>
+        </div>
+
+        <div style="margin-top: 25px; text-align: center;">
+           <a href="http://localhost:5173/admin/orders" style="background: #4f46e5; color: white; padding: 12px 30px; border-radius: 8px; text-decoration: none; font-weight: bold; display: inline-block;">Manage on Admin Dashboard</a>
+        </div>
+      </div>
+    `,
+  })
+    .then(() => console.log(`[Email] ✅ Action Alert sent to Admin: ${adminEmail}`))
+    .catch((err) => console.error(`[Email] ❌ Failed to alert Admin: ${adminEmail}`, err.message));
+
+  // Run both in parallel and wait for both to settle
+  await Promise.allSettled([customerPromise, adminPromise]);
 };
 
 // ──────────────────────────────────────────
 // Send Admin Reply Email
 // ──────────────────────────────────────────
 const sendReplyEmail = async (toEmail, customerName, originalSubject, replyMessage) => {
-  const transporter = createTransporter();
 
   const mailOptions = {
     from: `"Githmi Sports Goods Team" <${process.env.EMAIL_USER}>`,
@@ -171,7 +222,6 @@ const sendReplyEmail = async (toEmail, customerName, originalSubject, replyMessa
 // Send Order Status Update Email
 // ──────────────────────────────────────────
 const sendOrderStatusEmail = async (toEmail, order) => {
-  const transporter = createTransporter();
 
   const statusConfig = {
     Pending: {
@@ -300,7 +350,23 @@ const sendOrderStatusEmail = async (toEmail, order) => {
     `,
   };
 
-  await transporter.sendMail(mailOptions);
+  // 1. Send to Customer
+  const customerPromise = transporter.sendMail(mailOptions)
+    .then(() => console.log(`[Email] ✅ Status update sent to Customer: ${toEmail}`))
+    .catch((err) => console.error(`[Email] ❌ Failed status update to Customer: ${toEmail}`, err.message));
+
+  // 2. Send to Admin (Dedicated Notification)
+  const adminEmail = "githmisportgoods@gmail.com";
+  const adminPromise = transporter.sendMail({
+    ...mailOptions,
+    to: adminEmail,
+    subject: `📢 ADMIN ALERT: Order ${order.status} - #${order.orderId}`,
+  })
+    .then(() => console.log(`[Email] ✅ Status sync sent to Admin: ${adminEmail}`))
+    .catch((err) => console.error(`[Email] ❌ Failed status sync to Admin: ${adminEmail}`, err.message));
+
+  // Run both in parallel and wait
+  await Promise.allSettled([customerPromise, adminPromise]);
 };
 
 module.exports = { sendOTPEmail, sendOrderConfirmationEmail, sendReplyEmail, sendOrderStatusEmail };
