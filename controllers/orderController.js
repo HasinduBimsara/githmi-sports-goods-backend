@@ -1,6 +1,8 @@
 const Order = require("../models/Order");
-const Product = require("../models/product");
+const Product = require("../models/Product");
+const Notification = require("../models/Notification");
 const { sendOrderConfirmationEmail, sendOrderStatusEmail } = require("../utils/sendMail");
+
 
 // @desc    Get all orders
 // @route   GET /api/order
@@ -149,7 +151,17 @@ const createOrder = async (req, res) => {
       console.error("Email error:", err.message),
     );
 
+    // Create Notification for Admin
+    await Notification.create({
+      recipient: "admin",
+      title: "New Order Placed",
+      message: `A new order (${order.orderId}) has been placed by ${name}.`,
+      type: "new_order",
+      link: `/admin/orders`,
+    });
+
     res.status(201).json({ message: "Order placed successfully", order });
+
   } catch (err) {
     res.status(500).json({ message: "Server error", error: err.message });
   }
@@ -222,7 +234,17 @@ const updateOrderStatus = async (req, res) => {
       .then(() => console.log(`[Email] Status email sent successfully to ${order.email}`))
       .catch((err) => console.error(`[Email] Failed to send status email to ${order.email}:`, err.message));
 
+    // Create Notification for Customer
+    await Notification.create({
+      recipient: order.email,
+      title: "Order Status Updated",
+      message: `Your order (${order.orderId}) is now ${status}.`,
+      type: "order_update",
+      link: `/orders`,
+    });
+
     res.json({ message: "Order status updated", order });
+
   } catch (err) {
     res.status(500).json({ message: "Server error", error: err.message });
   }

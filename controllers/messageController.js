@@ -1,5 +1,7 @@
 const Message = require("../models/Message");
+const Notification = require("../models/Notification");
 const { sendReplyEmail } = require("../utils/sendMail");
+
 
 // @desc    Create a new message
 // @route   POST /api/messages
@@ -21,6 +23,16 @@ const createMessage = async (req, res) => {
     });
 
     res.status(201).json({ message: "Message sent successfully", data: newMessage });
+
+    // Create Notification for Admin (non-blocking)
+    Notification.create({
+      recipient: "admin",
+      title: "New Message Received",
+      message: `You have a new message from ${name} (${subject}).`,
+      type: "message",
+      link: "/admin/messages",
+    }).catch(err => console.error("Notification error:", err));
+
   } catch (error) {
     res.status(500).json({ message: "Server error", error: error.message });
   }

@@ -1,4 +1,5 @@
 const Review = require("../models/Review");
+const Notification = require("../models/Notification");
 const jwt = require("jsonwebtoken");
 
 // @desc    Get all reviews (approved for public, all for admin)
@@ -103,6 +104,16 @@ const createReview = async (req, res) => {
     res
       .status(201)
       .json({ message: "Review submitted successfully", review });
+
+    // Create Notification for Admin (non-blocking)
+    Notification.create({
+      recipient: "admin",
+      title: "New Product Review",
+      message: `${reviewName} left a ${rating}-star review for product ${productId}.`,
+      type: "system",
+      link: "/admin/reviews",
+    }).catch(err => console.error("Notification error:", err));
+
   } catch (err) {
     res.status(500).json({ message: "Server error", error: err.message });
   }
