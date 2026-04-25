@@ -5,7 +5,6 @@ const morgan = require("morgan");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 const mongoSanitize = require("express-mongo-sanitize");
-const xss = require("xss-clean");
 const hpp = require("hpp");
 require("dotenv").config();
 
@@ -122,7 +121,6 @@ app.use(morgan(process.env.NODE_ENV === "production" ? "combined" : "dev"));
 // Security Middlewares
 app.use(helmet({ crossOriginResourcePolicy: false }));
 app.use(mongoSanitize());
-app.use(xss());
 app.use(hpp());
 
 const limiter = rateLimit({
@@ -159,6 +157,8 @@ app.use((req, res, next) => {
     database: getDatabaseStatus(),
   });
 });
+
+console.log("Registering API routes...");
 
 app.use("/api/user", userRoutes);
 app.use("/api/product", productRoutes);
