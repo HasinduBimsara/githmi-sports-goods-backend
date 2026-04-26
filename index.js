@@ -142,7 +142,7 @@ app.get("/health", (req, res) => {
   });
 });
 
-app.use((req, res, next) => {
+app.use(async (req, res, next) => {
   if (req.path === "/" || req.path === "/health") {
     return next();
   }
@@ -151,11 +151,21 @@ app.use((req, res, next) => {
     return next();
   }
 
-  return res.status(503).json({
-    message:
-      "Database unavailable. Check MONGO_URI credentials and MongoDB network access.",
-    database: getDatabaseStatus(),
-  });
+  try {
+    if (typeof connectToMongo === 'function') {
+      await connectToMongo();
+    }
+    if (isDatabaseReady()) {
+      return next();
+    }
+    throw new Error("Unable to connect to database");
+  } catch (error) {
+    return res.status(503).json({
+      message:
+        "Database unavailable. Check MONGO_URI credentials and MongoDB network access.",
+      database: getDatabaseStatus(),
+    });
+  }
 });
 
 console.log("Registering API routes...");
@@ -195,6 +205,8 @@ const scheduleReconnect = () => {
   }, 15000);
 };
 
+let connectionPromise = null;
+
 const connectToMongo = async () => {
   const mongoUri = process.env.MONGO_URI;
 
@@ -210,23 +222,30 @@ const connectToMongo = async () => {
     return;
   }
 
-  if (isMongoConnecting || isDatabaseReady()) {
+  if (isDatabaseReady()) {
     return;
+  }
+
+  if (connectionPromise) {
+    return connectionPromise;
   }
 
   isMongoConnecting = true;
 
-  try {
-    await mongoose.connect(mongoUri, {
-      serverSelectionTimeoutMS: 10000,
-    });
+  connectionPromise = mongoose.connect(mongoUri, {
+    serverSelectionTimeoutMS: 10000,
+  }).then(() => {
     console.log("MongoDB connected successfully");
-  } catch (err) {
+    isMongoConnecting = false;
+  }).catch((err) => {
     console.error(getStartupErrorMessage(err, mongoUri));
     scheduleReconnect();
-  } finally {
     isMongoConnecting = false;
-  }
+    connectionPromise = null;
+    throw err;
+  });
+
+  return connectionPromise;
 };
 
 mongoose.connection.on("disconnected", () => {
