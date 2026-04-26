@@ -154,7 +154,7 @@ const updateReview = async (req, res) => {
     if (review.email !== req.user.email && req.user.role !== "admin")
       return res.status(403).json({ message: "Not authorized" });
 
-    const { title, comment, rating } = req.body;
+    const { title, comment, rating, image } = req.body;
 
     if (rating && (rating < 1 || rating > 5))
       return res
@@ -164,7 +164,12 @@ const updateReview = async (req, res) => {
     if (title) review.title = title;
     if (comment) review.comment = comment;
     if (rating) review.rating = rating;
-    review.isApproved = false; // Requires re-approval after edit
+    if (image !== undefined && req.user.role === "admin") review.image = image;
+    
+    // Only resets approval if non-admin is updating their own comment, etc.
+    if (req.user.role !== "admin") {
+      review.isApproved = false; // Requires re-approval after edit
+    }
 
     await review.save();
 

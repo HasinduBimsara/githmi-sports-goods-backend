@@ -35,6 +35,10 @@ const reviewSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    image: {
+      type: String,
+      default: "",
+    },
     role: {
       type: String,
       default: "Verified Buyer",
