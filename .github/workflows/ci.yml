@@ -6,17 +6,21 @@ on:
   pull_request:
     branches: [ "main" ]
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
     - uses: actions/checkout@v4
-    - name: Use Node.js 20.x
+    - name: Use Node.js 24.x
       uses: actions/setup-node@v4
       with:
-        node-version: 20.x
+        node-version: 24.x
         cache: 'npm'
     - run: npm install
     # Ensure syntax is good and it requires successfully
-    - run: node -e "require('./index.js')"
+    - run: node -e "require('./index.js'); setTimeout(() => process.exit(0), 1000);"
+
