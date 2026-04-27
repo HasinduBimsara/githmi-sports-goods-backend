@@ -10,7 +10,8 @@ const { sendOrderConfirmationEmail, sendOrderStatusEmail } = require("../utils/s
 const getAllOrders = async (req, res) => {
   try {
     const { status, page = 1, limit = 20 } = req.query;
-    const filter = status ? { status } : {};
+    const filter = { isHidden: { $ne: true } };
+    if (status) filter.status = status;
 
     const skip = (parseInt(page) - 1) * parseInt(limit);
     const total = await Order.countDocuments(filter);
@@ -35,7 +36,10 @@ const getAllOrders = async (req, res) => {
 // @access  Protected
 const getMyOrders = async (req, res) => {
   try {
-    const orders = await Order.find({ email: req.user.email }).sort({
+    const orders = await Order.find({ 
+      email: req.user.email, 
+      isHidden: { $ne: true } 
+    }).sort({
       createdAt: -1,
     });
     res.json(orders);
@@ -49,7 +53,10 @@ const getMyOrders = async (req, res) => {
 // @access  Protected (owner or admin)
 const getOrderById = async (req, res) => {
   try {
-    const order = await Order.findOne({ orderId: req.params.orderId });
+    const order = await Order.findOne({ 
+      orderId: req.params.orderId, 
+      isHidden: { $ne: true } 
+    });
     if (!order) return res.status(404).json({ message: "Order not found" });
 
     const isOwner = order.email === req.user.email;
@@ -250,10 +257,33 @@ const updateOrderStatus = async (req, res) => {
   }
 };
 
+// @desc    Delete (hide) an order
+// @route   DELETE /api/order/:orderId
+// @access  Admin
+const deleteOrder = async (req, res) => {
+  try {
+    console.log("Attempting to delete order:", req.params.orderId);
+    const order = await Order.findOne({ orderId: req.params.orderId });
+    if (!order) {
+      console.log("Order not found:", req.params.orderId);
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    order.isHidden = true;
+    await order.save();
+
+    res.json({ message: "Order removed from dashboard and history" });
+  } catch (err) {
+    console.error("Delete order error:", err);
+    res.status(500).json({ message: "Server error during removal", error: err.message });
+  }
+};
+
 module.exports = {
   getAllOrders,
   getMyOrders,
   getOrderById,
   createOrder,
   updateOrderStatus,
+  deleteOrder,
 };
