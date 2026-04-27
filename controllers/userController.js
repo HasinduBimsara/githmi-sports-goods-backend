@@ -157,7 +157,8 @@ const sendOTP = async (req, res) => {
     const { email } = req.body;
     if (!email) return res.status(400).json({ message: "Email is required" });
 
-    const user = await User.findOne({ email });
+    const normalizedEmail = email.toLowerCase();
+    const user = await User.findOne({ email: normalizedEmail });
     if (!user)
       return res.status(404).json({ message: "No account with that email" });
 
@@ -225,25 +226,93 @@ const changePassword = async (req, res) => {
         .status(400)
         .json({ message: "Email, OTP, and new password are required" });
 
-    const record = await OTP.findOne({ email });
+    // 0. Normalize email
+    const normalizedEmail = email.toLowerCase();
+    console.log(`[Diagnostic] Change Password for: ${normalizedEmail}`);
+
+    const record = await OTP.findOne({ email: normalizedEmail });
     if (!record)
-      return res.status(400).json({ message: "OTP not found or already used" });
+      return res.status(400).json({ message: "OTP not found or already used for this email" });
 
     if (record.otp !== otp)
       return res.status(400).json({ message: "Invalid OTP" });
 
     if (record.expiresAt < new Date()) {
-      await OTP.deleteOne({ email });
+      await OTP.deleteOne({ email: normalizedEmail });
       return res.status(400).json({ message: "OTP has expired" });
     }
 
+    // 1. Update Password in MongoDB
     const hashedPassword = await bcrypt.hash(nextPassword, 12);
-    await User.findOneAndUpdate({ email }, { password: hashedPassword });
-    await OTP.deleteOne({ email });
+    const updatedUser = await User.findOneAndUpdate(
+      { email: normalizedEmail },
+      { password: hashedPassword },
+      { new: true }
+    );
 
+    if (!updatedUser) {
+        return res.status(404).json({ message: "User not found in database" });
+    }
+
+    // 2. Update Password in Firebase (or create if missing)
+    try {
+        let firebaseUid = updatedUser.firebaseUid;
+
+        // If firebaseUid is missing, try to find by email
+        if (!firebaseUid) {
+          try {
+            const fbUser = await admin.auth().getUserByEmail(normalizedEmail);
+            firebaseUid = fbUser.uid;
+            updatedUser.firebaseUid = firebaseUid;
+            await updatedUser.save();
+          } catch (e) {
+            console.log(`User ${normalizedEmail} not found in Firebase. Creating account...`);
+            try {
+              const newUser = await admin.auth().createUser({
+                email: normalizedEmail,
+                password: nextPassword,
+                displayName: `${updatedUser.firstName} ${updatedUser.lastName}`,
+                phoneNumber: updatedUser.phone || undefined,
+              });
+              firebaseUid = newUser.uid;
+              updatedUser.firebaseUid = firebaseUid;
+              await updatedUser.save();
+              console.log(`Successfully created missing Firebase user for ${normalizedEmail}`);
+            } catch (createErr) {
+              if (createErr.code !== 'auth/email-already-exists') {
+                 throw createErr;
+              }
+              // If it exists but we couldn't find it earlier, try one more time
+              const fbUser = await admin.auth().getUserByEmail(normalizedEmail);
+              firebaseUid = fbUser.uid;
+              updatedUser.firebaseUid = firebaseUid;
+              await updatedUser.save();
+            }
+          }
+        }
+
+        if (firebaseUid) {
+          console.log(`[FirebaseSync] Updating password for UID: ${firebaseUid}`);
+          await admin.auth().updateUser(firebaseUid, {
+            password: nextPassword,
+          });
+          console.log(`[FirebaseSync] Firebase password successfully updated for: ${normalizedEmail}`);
+        }
+    } catch (fbError) {
+        console.error("[FirebaseSync] CRITICAL SYNC ERROR:", fbError.code, fbError.message);
+        return res.status(500).json({ 
+          message: "Could not synchronize with Firebase Authentication.", 
+          error: fbError.message,
+          code: fbError.code,
+          hint: "Ensure the Firebase Admin Service Account is properly configured."
+        });
+    }
+
+    await OTP.deleteOne({ email: normalizedEmail });
     res.json({ message: "Password changed successfully" });
   } catch (err) {
-    res.status(500).json({ message: "Server error", error: err.message });
+    console.error("changePassword Root Error:", err);
+    res.status(500).json({ message: "An unexpected error occurred during password reset", error: err.message });
   }
 };
 
