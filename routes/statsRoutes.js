@@ -12,13 +12,15 @@ router.get("/", async (req, res) => {
     const userCount = await User.countDocuments();
     const productCount = await Product.countDocuments();
     
-    const premiumProducts = await Product.countDocuments({ isBestDeal: true });
+    const premiumProducts = await Product.countDocuments({ 
+      $or: [{ isBestDeal: true }, { isPremium: true }] 
+    });
     
     const reviewStats = await Review.aggregate([
       { $group: { _id: null, avgRating: { $avg: "$rating" } } }
     ]);
     
-    let satisfaction = 0;
+    let satisfaction = 95; // Default baseline if no reviews
     if (reviewStats.length > 0 && reviewStats[0].avgRating) {
       satisfaction = Math.round((reviewStats[0].avgRating / 5) * 100);
     }
@@ -27,7 +29,7 @@ router.get("/", async (req, res) => {
       users: userCount || 0,
       products: productCount || 0,
       brands: premiumProducts || 0, 
-      satisfaction: satisfaction || 0
+      satisfaction: satisfaction
     });
   } catch (error) {
     console.error("Error fetching stats:", error);
